@@ -4,6 +4,6 @@ linear_velocity_controller:
     type: linear_velocity_controller/LinearVelocityController
 
     # Controller-specific parameters
-    z_vel: 0.01
-    z_dist: 0.1
+    y_vel: 0.1
+    y_dist: 0.1
     
