@@ -1,9 +1,7 @@
 #ifndef LINEAR_VELOCITY_CONTROLLER_LINEAR_VELOCITY_CONTROLLER
 #define LINEAR_VELOCITY_CONTROLLER_LINEAR_VELOCITY_CONTROLLER
 
-#include <array>
 #include <memory>
-#include <vector>
 
 #include <Eigen/Eigen>
 #include <Eigen/src/Core/IO.h>
@@ -24,7 +22,7 @@
 
 #include <franka_semantic_components/franka_cartesian_velocity_interface.hpp>
 
-#include "linear_velocity_controller/generate_trajectory.hpp"
+#include "linear_velocity_controller/linear_trajectory_generator.hpp"
 
 namespace linear_velocity_controller {
 
@@ -33,9 +31,6 @@ namespace linear_velocity_controller {
  */
 class LinearVelocityController : public controller_interface::ControllerInterface {
  public:
-  /// Setting a direction (x,y,z) to this value ignores movement along that direction.
-  static constexpr double IGNORE_DIRECTION = 0.0;
-
   // /// Type alias for command input type
   // using CmdMsg = linear_velocity_controller_interfaces::msg::ConstrainedLinearMovement;
 
@@ -114,15 +109,6 @@ class LinearVelocityController : public controller_interface::ControllerInterfac
   controller_interface::return_type update(const rclcpp::Time &time, const rclcpp::Duration &period) override;
 
  private:
-  /// Whether to ignore the x-direction.
-  bool ignore_x() const { return x_vel_ == IGNORE_DIRECTION; }
-
-  /// Whether to ignore the y-direction.
-  bool ignore_y() const { return y_vel_ == IGNORE_DIRECTION; }
-
-  /// Whether to ignore the z-direction.
-  bool ignore_z() const { return z_vel_ == IGNORE_DIRECTION; }
-
   std::unique_ptr<franka_semantic_components::FrankaCartesianVelocityInterface> franka_cartesian_velocity_;
 
   // rclcpp::Subscription<CmdMsg>::SharedPtr                 subscriber_;
@@ -133,16 +119,15 @@ class LinearVelocityController : public controller_interface::ControllerInterfac
   // std::unique_ptr<RtStatePublisher>                         realtime_publisher_;
 
   // Parameter values
-  double x_vel_;
-  double x_dist_;
-  double y_vel_;
-  double y_dist_;
-  double z_vel_;
-  double z_dist_;
+  double x_vel_ = 0.0;
+  double y_vel_ = 0.0;
+  double z_vel_ = 0.0;
+  double target_distance_ = 0.0;
+  double target_duration_ = 0.0;
 
   // Internal variables
-  size_t loop_count_ = 0;
-  std::vector<std::array<double, trajectory::N_DIMS>> ramp_up_trajectory_;
+  std::shared_ptr<LinearVelocityTrajectoryGenerator> trajectory_generator_;
+  rclcpp::Duration                                   elapsed_time_ = rclcpp::Duration(0, 0);
 };
 }  // namespace linear_velocity_controller
 

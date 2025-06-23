@@ -1,12 +1,10 @@
-#include "franka_semantic_components/franka_cartesian_velocity_interface.hpp"
-#include "linear_velocity_controller/generate_trajectory.hpp"
-#include <linear_velocity_controller/linear_velocity_controller.hpp>
+#include "linear_velocity_controller/linear_velocity_controller.hpp"
 
 #include <cstdio>
 #include <exception>
 #include <memory>
-#include <string>
-#include <vector>
+
+#include <Eigen/src/Core/Matrix.h>
 
 #include <rclcpp/duration.hpp>
 #include <rclcpp/logging.hpp>
@@ -18,7 +16,9 @@
 #include <controller_interface/controller_interface_base.hpp>
 #include <realtime_tools/realtime_buffer.hpp>
 
-#include <ruckig/ruckig.hpp>
+#include <franka_semantic_components/franka_cartesian_velocity_interface.hpp>
+
+#include "linear_velocity_controller/linear_trajectory_generator.hpp"
 
 namespace linear_velocity_controller {
 
@@ -37,12 +37,11 @@ controller_interface::InterfaceConfiguration LinearVelocityController::state_int
 
 controller_interface::CallbackReturn LinearVelocityController::on_init() {
   try {
-    auto_declare<double>("x_vel", IGNORE_DIRECTION);
-    auto_declare<double>("x_dist", IGNORE_DIRECTION);
-    auto_declare<double>("y_vel", IGNORE_DIRECTION);
-    auto_declare<double>("y_dist", IGNORE_DIRECTION);
-    auto_declare<double>("z_vel", IGNORE_DIRECTION);
-    auto_declare<double>("z_dist", IGNORE_DIRECTION);
+    auto_declare<double>("x_vel", 0.0);
+    auto_declare<double>("y_vel", 0.0);
+    auto_declare<double>("z_vel", 0.0);
+    auto_declare<double>("distance", 0.0);
+    auto_declare<double>("duration", 0.0);
 
     // auto_declare<std::string>("cmd_topic", "~/cmd_pose");
     // auto_declare<std::string>("state_topic", "~/commanded_state");
@@ -56,52 +55,30 @@ controller_interface::CallbackReturn LinearVelocityController::on_init() {
 controller_interface::CallbackReturn LinearVelocityController::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/
 ) {
-  // Get the desired velocity and distance in the x-direction
+  // Get the desired velocities
   x_vel_ = get_node()->get_parameter("x_vel").as_double();
-  x_dist_ = get_node()->get_parameter("x_dist").as_double();
-  if (x_vel_ == IGNORE_DIRECTION && x_dist_ == IGNORE_DIRECTION) {
-    RCLCPP_INFO(get_node()->get_logger(), "Will not move in x-direction.");
-  } else if (x_vel_ != IGNORE_DIRECTION && x_dist_ != IGNORE_DIRECTION) {
-    RCLCPP_INFO(get_node()->get_logger(), "Will move in x-direction with %.3f m/s for up to %0.3f m.", x_vel_, x_vel_);
-  } else {
-    RCLCPP_ERROR(
-      get_node()->get_logger(),
-      "Parameters 'x_vel' and 'x_dist' must both be nonzero, or both be %.1f. Got x_vel = %.3f and x_dist = %.3f",
-      IGNORE_DIRECTION, x_vel_, x_dist_
-    );
-    return controller_interface::CallbackReturn::ERROR;
-  }
-
-  // Get the desired velocity and distance in the y-direction
   y_vel_ = get_node()->get_parameter("y_vel").as_double();
-  y_dist_ = get_node()->get_parameter("y_dist").as_double();
-  if (y_vel_ == IGNORE_DIRECTION && y_dist_ == IGNORE_DIRECTION) {
-    RCLCPP_INFO(get_node()->get_logger(), "Will not move in y-direction.");
-  } else if (y_vel_ != IGNORE_DIRECTION && y_dist_ != IGNORE_DIRECTION) {
-    RCLCPP_INFO(get_node()->get_logger(), "Will move in y-direction with %.3f m/s for up to %0.3f m.", y_vel_, y_vel_);
-  } else {
-    RCLCPP_ERROR(
-      get_node()->get_logger(),
-      "Parameters 'y_vel' and 'y_dist' must both be nonzero, or both be %.1f. Got y_vel = %.3f and y_dist = %.3f",
-      IGNORE_DIRECTION, y_vel_, y_dist_
-    );
+  z_vel_ = get_node()->get_parameter("z_vel").as_double();
+
+  target_distance_ = get_node()->get_parameter("distance").as_double();
+  target_duration_ = get_node()->get_parameter("duration").as_double();
+  if (target_distance_ > 0.0 && target_duration_ > 0.0) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Cannot set both parameters 'distance' and 'duration'.");
     return controller_interface::CallbackReturn::ERROR;
   }
-
-  // Get the desired velocity and distance in the z-direction
-  z_vel_ = get_node()->get_parameter("z_vel").as_double();
-  z_dist_ = get_node()->get_parameter("z_dist").as_double();
-  if (z_vel_ == IGNORE_DIRECTION && z_dist_ == IGNORE_DIRECTION) {
-    RCLCPP_INFO(get_node()->get_logger(), "Will not move in z-direction.");
-  } else if (z_vel_ != IGNORE_DIRECTION && z_dist_ != IGNORE_DIRECTION) {
-    RCLCPP_INFO(get_node()->get_logger(), "Will move in z-direction with %.3f m/s for up to %0.3f m.", z_vel_, z_vel_);
-  } else {
-    RCLCPP_ERROR(
-      get_node()->get_logger(),
-      "Parameters 'z_vel' and 'z_dist' must both be nonzero, or both be %.1f. Got z_vel = %.3f and z_dist = %.3f",
-      IGNORE_DIRECTION, z_vel_, z_dist_
-    );
+  if (target_distance_ < 0.0) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Parameter 'distance' cannot be negative (got %f).", target_distance_);
     return controller_interface::CallbackReturn::ERROR;
+  }
+  if (target_duration_ < 0.0) {
+    RCLCPP_ERROR(get_node()->get_logger(), "Parameter 'distance' cannot be negative (got %f).", target_duration_);
+    return controller_interface::CallbackReturn::ERROR;
+  }
+  if (target_distance_ == 0.0 && target_duration_ == 0.0) {
+    RCLCPP_WARN(
+      get_node()->get_logger(),
+      "Parameters 'distance' and 'duration' are both zero, the resulting motion will ramp up and down immediately."
+    );
   }
 
   // // Command subscriber configuration
@@ -157,11 +134,10 @@ controller_interface::CallbackReturn LinearVelocityController::on_cleanup(
 ) {
   // Reset parameters
   x_vel_ = 0.0;
-  x_dist_ = 0.0;
   y_vel_ = 0.0;
-  y_dist_ = 0.0;
   z_vel_ = 0.0;
-  z_dist_ = 0.0;
+  target_distance_ = 0.0;
+  target_duration_ = 0.0;
 
   // Remove semantic component
   franka_cartesian_velocity_.reset();
@@ -179,8 +155,21 @@ controller_interface::CallbackReturn LinearVelocityController::on_cleanup(
 controller_interface::CallbackReturn LinearVelocityController::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/
 ) {
-  // Reset internal variables
-  ramp_up_trajectory_ = trajectory::generate_acceleration_phase({x_vel_, y_vel_, z_vel_});
+  // Compute trajectory
+  const LinearVelocityTrajectoryGenerator::DimVector target_velocity(x_vel_, y_vel_, z_vel_);
+  if (target_distance_ > 0.0) {
+    trajectory_generator_ = std::make_shared<LinearVelocityTrajectoryGenerator>(
+      LinearVelocityTrajectoryGenerator::with_target_distance(target_velocity, target_distance_)
+    );
+  } else if (target_duration_ > 0.0) {
+    trajectory_generator_ = std::make_shared<LinearVelocityTrajectoryGenerator>(
+      LinearVelocityTrajectoryGenerator::with_target_duration(target_velocity, target_duration_)
+    );
+  } else {
+    trajectory_generator_ =
+      std::make_shared<LinearVelocityTrajectoryGenerator>(LinearVelocityTrajectoryGenerator(target_velocity));
+  }
+  elapsed_time_ = rclcpp::Duration(0, 0);
 
   // Set command interfaces
   franka_cartesian_velocity_->assign_loaned_command_interfaces(command_interfaces_);
@@ -196,7 +185,7 @@ controller_interface::CallbackReturn LinearVelocityController::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/
 ) {
   // Reset internal variables
-  ramp_up_trajectory_.clear();
+  trajectory_generator_.reset();
 
   // Release command interfaces
   franka_cartesian_velocity_->release_interfaces();
@@ -209,7 +198,7 @@ controller_interface::CallbackReturn LinearVelocityController::on_deactivate(
 }
 
 controller_interface::return_type LinearVelocityController::update(
-  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/
+  const rclcpp::Time & /*time*/, const rclcpp::Duration &period
 ) {
   // // Read the commands from the real-time buffer
   // std::shared_ptr<CmdMsg> *twist_command_msg_ptr = rt_command_ptr_.readFromRT();
@@ -236,34 +225,20 @@ controller_interface::return_type LinearVelocityController::update(
 
   // -----------------------------------------
 
-  double x_vel_target;
-  double y_vel_target;
-  double z_vel_target;
-  if (loop_count_ < ramp_up_trajectory_.size()) {
-    // Still ramping up
-    auto ramp_up_velocities = ramp_up_trajectory_[loop_count_];
-    x_vel_target = ramp_up_velocities[0];
-    y_vel_target = ramp_up_velocities[1];
-    z_vel_target = ramp_up_velocities[2];
-  } else {
-    // In constant velocity
-    x_vel_target = x_vel_;
-    y_vel_target = y_vel_;
-    z_vel_target = z_vel_;
-  }
-
-  RCLCPP_INFO(get_node()->get_logger(), "Sending velocities %f, %f, %f", x_vel_target, y_vel_target, z_vel_target);
+  elapsed_time_ = elapsed_time_ + period;
 
   // Send the output commands
-  Eigen::Vector3d cartesian_linear_velocity(x_vel_target, y_vel_target, z_vel_target);
-  Eigen::Vector3d cartesian_angular_velocity(0.0, 0.0, 0.0);
-
-  loop_count_++;
-
+  const Eigen::Vector3d cartesian_linear_velocity = trajectory_generator_->velocity_at_time(elapsed_time_.seconds());
+  const Eigen::Vector3d cartesian_angular_velocity(0.0, 0.0, 0.0);
   if (!franka_cartesian_velocity_->setCommand(cartesian_linear_velocity, cartesian_angular_velocity)) {
     RCLCPP_FATAL(get_node()->get_logger(), "Set command failed. Did you activate the elbow command interface?");
     return controller_interface::return_type::ERROR;
   }
+
+  RCLCPP_INFO_THROTTLE(
+    get_node()->get_logger(), *get_node()->get_clock(), 100, "Sending velocities %f, %f, %f",
+    cartesian_linear_velocity.x(), cartesian_linear_velocity.y(), cartesian_linear_velocity.z()
+  );
 
   return controller_interface::return_type::OK;
 }
