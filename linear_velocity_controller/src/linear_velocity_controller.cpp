@@ -1,4 +1,5 @@
 #include "franka_semantic_components/franka_cartesian_velocity_interface.hpp"
+#include "linear_velocity_controller/generate_trajectory.hpp"
 #include <linear_velocity_controller/linear_velocity_controller.hpp>
 
 #include <cstdio>
@@ -16,6 +17,8 @@
 
 #include <controller_interface/controller_interface_base.hpp>
 #include <realtime_tools/realtime_buffer.hpp>
+
+#include <ruckig/ruckig.hpp>
 
 namespace linear_velocity_controller {
 
@@ -177,6 +180,7 @@ controller_interface::CallbackReturn LinearVelocityController::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/
 ) {
   // Reset internal variables
+  ramp_up_trajectory_ = trajectory::generate_acceleration_phase({x_vel_, y_vel_, z_vel_});
 
   // Set command interfaces
   franka_cartesian_velocity_->assign_loaned_command_interfaces(command_interfaces_);
@@ -192,6 +196,7 @@ controller_interface::CallbackReturn LinearVelocityController::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/
 ) {
   // Reset internal variables
+  ramp_up_trajectory_.clear();
 
   // Release command interfaces
   franka_cartesian_velocity_->release_interfaces();
@@ -231,9 +236,29 @@ controller_interface::return_type LinearVelocityController::update(
 
   // -----------------------------------------
 
+  double x_vel_target;
+  double y_vel_target;
+  double z_vel_target;
+  if (loop_count_ < ramp_up_trajectory_.size()) {
+    // Still ramping up
+    auto ramp_up_velocities = ramp_up_trajectory_[loop_count_];
+    x_vel_target = ramp_up_velocities[0];
+    y_vel_target = ramp_up_velocities[1];
+    z_vel_target = ramp_up_velocities[2];
+  } else {
+    // In constant velocity
+    x_vel_target = x_vel_;
+    y_vel_target = y_vel_;
+    z_vel_target = z_vel_;
+  }
+
+  RCLCPP_INFO(get_node()->get_logger(), "Sending velocities %f, %f, %f", x_vel_target, y_vel_target, z_vel_target);
+
   // Send the output commands
-  Eigen::Vector3d cartesian_linear_velocity(x_vel_, y_vel_, z_vel_);
+  Eigen::Vector3d cartesian_linear_velocity(x_vel_target, y_vel_target, z_vel_target);
   Eigen::Vector3d cartesian_angular_velocity(0.0, 0.0, 0.0);
+
+  loop_count_++;
 
   if (!franka_cartesian_velocity_->setCommand(cartesian_linear_velocity, cartesian_angular_velocity)) {
     RCLCPP_FATAL(get_node()->get_logger(), "Set command failed. Did you activate the elbow command interface?");

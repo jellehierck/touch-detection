@@ -58,19 +58,14 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 
+# Remove the built-in ruckig as we do not want interference with the newly built one
+RUN sudo apt-get remove ros-humble-ruckig -y
+
 # Build the dependency packages using the virtual environment
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && source $FRANKA_WS/install/setup.bash \
     && source .venv/bin/activate \
-    && python -m colcon build --symlink-install
-
-# Build Ruckig as well
-WORKDIR $TOUCH_DETECTION_WS/src/ruckig
-RUN mkdir -p build \
-    && cd build \ 
-    && cmake -DCMAKE_BUILD_TYPE=Release .. \
-    && make \
-    && make install
+    && python -m colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # Copy this package's source packages to the src/ folder
 WORKDIR $TOUCH_DETECTION_WS/src
@@ -81,6 +76,17 @@ COPY linear_velocity_controller_interfaces/ linear_velocity_controller_interface
 WORKDIR $TOUCH_DETECTION_WS
 RUN source .venv/bin/activate \
     && find ./src -name "requirement*.txt" -type f -exec pip3 install -r '{}' ';'
+
+# Install all ROS dependencies too
+RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+    && source $FRANKA_WS/install/setup.bash \
+    # Install rosdep dependencies from the imported repositories
+    && sudo apt-get update \
+    && rosdep update \
+    && rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y \
+    # Remove cache to reduce image size
+    && sudo apt-get clean \
+    && sudo rm -rf /var/lib/apt/lists/*
 
 # Build all packages with the virtual environment sourced
 WORKDIR $TOUCH_DETECTION_WS

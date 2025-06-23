@@ -32,6 +32,7 @@
   <depend>linear_velocity_controller_interfaces</depend>
 
   <!-- Other dependencies -->
+  <depend>ruckig</depend>
 
   <!-- Test dependencies -->
   <test_depend>ament_cmake_gmock</test_depend>

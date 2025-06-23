@@ -1,9 +1,9 @@
 #ifndef LINEAR_VELOCITY_CONTROLLER_LINEAR_VELOCITY_CONTROLLER
 #define LINEAR_VELOCITY_CONTROLLER_LINEAR_VELOCITY_CONTROLLER
 
-#include <cstddef>
-#include <linear_velocity_controller_interfaces/msg/detail/constrained_linear_movement__struct.hpp>
+#include <array>
 #include <memory>
+#include <vector>
 
 #include <Eigen/Eigen>
 #include <Eigen/src/Core/IO.h>
@@ -16,7 +16,6 @@
 #include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 #include <rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp>
 #include <rclcpp_lifecycle/state.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
 
 #include <controller_interface/controller_interface.hpp>
 #include <controller_interface/controller_interface_base.hpp>
@@ -25,7 +24,7 @@
 
 #include <franka_semantic_components/franka_cartesian_velocity_interface.hpp>
 
-#include <linear_velocity_controller_interfaces/msg/constrained_linear_movement.hpp>
+#include "linear_velocity_controller/generate_trajectory.hpp"
 
 namespace linear_velocity_controller {
 
@@ -140,6 +139,10 @@ class LinearVelocityController : public controller_interface::ControllerInterfac
   double y_dist_;
   double z_vel_;
   double z_dist_;
+
+  // Internal variables
+  size_t loop_count_ = 0;
+  std::vector<std::array<double, trajectory::N_DIMS>> ramp_up_trajectory_;
 };
 }  // namespace linear_velocity_controller
 

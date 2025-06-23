@@ -14,19 +14,23 @@ find_package(hardware_interface REQUIRED)
 find_package(realtime_tools REQUIRED)
 find_package(franka_semantic_components REQUIRED)
 find_package(linear_velocity_controller_interfaces REQUIRED)
-find_package(Eigen3 REQUIRED)  
+find_package(Eigen3 REQUIRED)
+find_package(ruckig REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/linear_velocity_controller.cpp
 )
-target_include_directories(${PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
+target_include_directories(${PROJECT_NAME}
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  PUBLIC $<INSTALL_INTERFACE:include>
   PUBLIC ${EIGEN3_INCLUDE_DIRS}
 )
 target_compile_features(${PROJECT_NAME}
   PUBLIC c_std_99 # Require C99
   PUBLIC cxx_std_17 # Require C++17
+)
+target_link_libraries(${PROJECT_NAME}
+  ruckig::ruckig
 )
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
@@ -37,6 +41,7 @@ ament_target_dependencies(${PROJECT_NAME}
   realtime_tools
   franka_semantic_components
   linear_velocity_controller_interfaces
+  ruckig
 )
 
 pluginlib_export_plugin_description_file(
@@ -98,10 +103,10 @@ endif()
 
 # Also install the include folder contents and the generated library
 ament_export_include_directories(
-    include
+  include
 )
 ament_export_libraries(
-    ${PROJECT_NAME}
+  ${PROJECT_NAME}
+  ruckig::ruckig
 )
-
 ament_package()
