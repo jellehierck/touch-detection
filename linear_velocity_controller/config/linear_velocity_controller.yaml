@@ -1,0 +1,9 @@
+linear_velocity_controller:
+  ros__parameters:
+    # Controller type
+    type: linear_velocity_controller/LinearVelocityController
+
+    # Controller-specific parameters
+    z_vel: 0.01
+    z_dist: 0.1
+    

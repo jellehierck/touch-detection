@@ -1,0 +1,7 @@
+<library path="linear_velocity_controller">
+    <class name="linear_velocity_controller/LinearVelocityController" type="linear_velocity_controller::LinearVelocityController" base_class_type="controller_interface::ControllerInterface">
+        <description>
+            
+        </description>
+    </class>
+</library>

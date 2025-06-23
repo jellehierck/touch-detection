@@ -1,0 +1,10 @@
+repositories:
+  franka_buttons_ros2:
+    type: git
+    url: https://github.com/jellehierck/franka_buttons_ros2
+    # version: # TODO: Include specific release when applicable
+
+  ruckig:
+    type: git
+    url: https://github.com/pantor/ruckig
+    version: v0.15.3

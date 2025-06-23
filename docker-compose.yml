@@ -1,0 +1,27 @@
+services:
+
+  touch_detection_robot:
+    extends:
+      # Change this to the absolute path of the base docker-compose file
+      file: /home/fr3/nakama_docker/franka_ros2_v0.1.15/docker-compose.yml
+      # Select the right service name
+      service: franka_ros2_v0.1.15
+
+    # We will build another image with franka_ros2 as base
+    image: touch_detection_robot
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+
+    # Set a suitable container name
+    container_name: touch_detection_robot
+
+    # Additional and overridden environment variables
+    environment:
+      # Extra environment variable example
+      EXTRA_VAR: value
+
+      # Existing environment variables can also be overridden
+      ROS_DOMAIN_ID: 40
+
+    # TODO: Add secret for Franka Desk credentials
