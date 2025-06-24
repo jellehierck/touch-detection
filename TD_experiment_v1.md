@@ -25,31 +25,34 @@ These are the conditions tested.
 # AI PC
 /home/nakama6000/Documents/git/clock_sync_ws/src/touch-detection/TD_experiment.sh --pc ai --setup-sync -e 1
 
-# Robot PC
-/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --setup-sync -e 1
-
 # Force PC
 /home/jelle/thesis/nakama_ws/src/touch-detection/TD_experiment.sh --pc force --setup-sync -e 1
+
+# Robot PC
+/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --setup-sync -e 1
 ```
 
 ### 2. Set up experiment nodes for clock monitoring and PC-specific nodes
 
 ```bash
-# Robot PC
-/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --setup-exp  -e 1
-
 # Force PC
 /home/jelle/thesis/nakama_ws/src/touch-detection/TD_experiment.sh --pc force --setup-exp -e 1 -r 1 
+
+# Robot PC
+/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --setup-exp  -e 1
 ```
 
-### 3. Start the repetition only on the Force PC
+### 3. Start the repetition on the Force PC and robot PC
 
 ```bash
 # Force PC
 /home/jelle/thesis/nakama_ws/src/touch-detection/TD_experiment.sh --pc force --start-rep -e 1 -r 1 
+
+# Robot PC
+/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh  --pc force --start-rep -e 1 -r 1 
 ```
 
-Optionally, delete repetition data first:
+Optionally, delete repetition data first on force PC:
 
 ```bash
 # Force PC
@@ -62,11 +65,11 @@ Optionally, delete repetition data first:
 ### 4. After all repetitions, clean up experiments
 
 ```bash
-# Robot PC
-/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --clean-exp -e 1
-
 # Force PC
 /home/jelle/thesis/nakama_ws/src/touch-detection/TD_experiment.sh --pc force --clean-exp -e 1
+
+# Robot PC
+/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --clean-exp -e 1
 ```
 
 ### 5. After all experiments are done, restore synchronization
@@ -75,11 +78,11 @@ Optionally, delete repetition data first:
 # AI PC
 /home/nakama6000/Documents/git/clock_sync_ws/src/touch-detection/TD_experiment.sh --pc ai --clean-sync  -e 1 
 
-# Robot PC
-/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --clean-sync  -e 1
-
 # Force PC
 /home/jelle/thesis/nakama_ws/src/touch-detection/TD_experiment.sh --pc force --clean-sync -e 1
+
+# Robot PC
+/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh --pc robot --clean-sync  -e 1
 ```
 
 ## Experiment notes
