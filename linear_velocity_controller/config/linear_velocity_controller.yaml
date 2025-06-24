@@ -5,5 +5,5 @@ linear_velocity_controller:
 
     # Controller-specific parameters
     y_vel: 0.1
-    y_dist: 0.1
+    distance: 0.3
     
