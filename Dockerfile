@@ -72,7 +72,6 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 WORKDIR $TOUCH_DETECTION_WS/src
 COPY touch_detection_bringup/ touch_detection_bringup/
 COPY linear_velocity_controller/ linear_velocity_controller/
-COPY linear_velocity_controller_interfaces/ linear_velocity_controller_interfaces/
 
 # Install all missing Python dependencies as specified in their requirements.txt files
 WORKDIR $TOUCH_DETECTION_WS

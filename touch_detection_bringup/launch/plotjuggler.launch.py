@@ -31,14 +31,12 @@ def generate_launch_description() -> LaunchDescription:
     # ---------- Declare executables ----------
 
     # Controller spawner executable
-    linear_velocity_controller_spawner = Node(
+    plotjuggler_node = Node(
         package="plotjuggler",
         executable="plotjuggler",
         arguments=[
             "--layout",
             LaunchConfiguration(plotjuggler_layout_path_arg.name),
-            "--buffer_size",
-            "30",
             "--nosplash",
         ],
         output="screen",
@@ -49,6 +47,6 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             *launch_args,  # Unpack the launch arguments
-            linear_velocity_controller_spawner,
+            plotjuggler_node,
         ]
     )

@@ -30,13 +30,6 @@ namespace linear_velocity_controller {
  *
  */
 class LinearVelocityController : public controller_interface::ControllerInterface {
- public:
-  // /// Type alias for command input type
-  // using CmdMsg = linear_velocity_controller_interfaces::msg::ConstrainedLinearMovement;
-
-  // /// Type alias for commanded state output type
-  // using StateMsg = geometry_msgs::msg::TwistStamped;
-
  protected:
   /**
    * Specify which hardware command interfaces are used.
@@ -110,13 +103,6 @@ class LinearVelocityController : public controller_interface::ControllerInterfac
 
  private:
   std::unique_ptr<franka_semantic_components::FrankaCartesianVelocityInterface> franka_cartesian_velocity_;
-
-  // rclcpp::Subscription<CmdMsg>::SharedPtr                 subscriber_;
-  // realtime_tools::RealtimeBuffer<std::shared_ptr<CmdMsg>> rt_command_ptr_;
-
-  // using RtStatePublisher = realtime_tools::RealtimePublisher<StateMsg>;
-  // rclcpp_lifecycle::LifecyclePublisher<StateMsg>::SharedPtr publisher_;
-  // std::unique_ptr<RtStatePublisher>                         realtime_publisher_;
 
   // Parameter values
   double x_vel_ = 0.0;

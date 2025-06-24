@@ -5,6 +5,7 @@ from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDesc
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -83,27 +84,37 @@ def generate_launch_description() -> LaunchDescription:
         forwarding=True,
     )
 
-    # linear_velocity_controller spawner
-    linear_velocity_controller_launch = GroupAction(
-        actions=[
-            # Include the controller manager nodes
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    [
-                        str(
-                            Path(get_package_share_directory("linear_velocity_controller"))
-                            / "launch"
-                            / "linear_velocity_controller.launch.py"
-                        ),
-                    ]
-                ),
-                launch_arguments={
-                    "linear_velocity_controller_inactive": "true",
-                }.items(),
+    # linear_velocity_controller spawners
+    fwd_linear_velocity_controller = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "fwd_linear_velocity_controller",
+            "--param-file",
+            str(
+                Path(get_package_share_directory("touch_detection_bringup"))
+                / "config"
+                / "fwd_linear_velocity_controller.yaml"
             ),
+            "--inactive",
         ],
-        forwarding=True,  # Make the launch arguments from the current launch file available inside this GroupAction
-        scoped=True,  # Any changes to launch arguments inside this GroupAction do not "spill" outside the GroupAction
+        output="screen",
+    )
+
+    bwd_linear_velocity_controller = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "bwd_linear_velocity_controller",
+            "--param-file",
+            str(
+                Path(get_package_share_directory("touch_detection_bringup"))
+                / "config"
+                / "bwd_linear_velocity_controller.yaml"
+            ),
+            "--inactive",
+        ],
+        output="screen",
     )
 
     # PlotJuggler for data visuazliaton
@@ -157,7 +168,8 @@ def generate_launch_description() -> LaunchDescription:
         [
             *launch_args,  # Unpack the launch arguments
             franka_bringup_base,
-            linear_velocity_controller_launch,
+            fwd_linear_velocity_controller,
+            bwd_linear_velocity_controller,
             plotjuggler_launch,
             rviz_launch,
         ]

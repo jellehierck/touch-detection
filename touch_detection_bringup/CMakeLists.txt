@@ -5,9 +5,10 @@ find_package(ament_cmake REQUIRED)
 
 install(
   DIRECTORY
+  config
   launch
-  rviz2
   plotjuggler
+  rviz2
   DESTINATION
   share/${PROJECT_NAME}
 )

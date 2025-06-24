@@ -13,7 +13,6 @@ find_package(controller_interface REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(realtime_tools REQUIRED)
 find_package(franka_semantic_components REQUIRED)
-find_package(linear_velocity_controller_interfaces REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(ruckig REQUIRED)
 
@@ -40,7 +39,6 @@ ament_target_dependencies(${PROJECT_NAME}
   pluginlib
   realtime_tools
   franka_semantic_components
-  linear_velocity_controller_interfaces
   ruckig
 )
 

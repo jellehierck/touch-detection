@@ -43,9 +43,6 @@ controller_interface::CallbackReturn LinearVelocityController::on_init() {
     auto_declare<double>("z_vel", 0.0);
     auto_declare<double>("distance", 0.0);
     auto_declare<double>("duration", 0.0);
-
-    // auto_declare<std::string>("cmd_topic", "~/cmd_pose");
-    // auto_declare<std::string>("state_topic", "~/commanded_state");
   } catch (const std::exception &e) {
     (void)fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
     return CallbackReturn::ERROR;
@@ -82,42 +79,6 @@ controller_interface::CallbackReturn LinearVelocityController::on_configure(
     );
   }
 
-  // // Command subscriber configuration
-  // try {
-  //   auto cmd_topic_param = get_node()->get_parameter("cmd_topic").as_string();
-  //   // Register commanded state publisher
-  //   subscriber_ = get_node()->create_subscription<CmdMsg>(
-  //     cmd_topic_param, rclcpp::SystemDefaultsQoS(),
-  //     [this](const CmdMsg::SharedPtr msg) { rt_command_ptr_.writeFromNonRT(msg); }
-  //   );
-  // } catch (const std::exception &e) {
-  //   // NOLINTNEXTLINE(cert-err33-c)
-  //   fprintf(
-  //     stderr,
-  //     "Exception thrown during subscription creation at configure stage "
-  //     "with message : %s \n",
-  //     e.what()
-  //   );
-  //   return controller_interface::CallbackReturn::ERROR;
-  // }
-
-  // // State publisher configuration
-  // try {
-  //   auto state_topic_param = get_node()->get_parameter("state_topic").as_string();
-  //   // Register commanded state publisher
-  //   publisher_ = get_node()->create_publisher<StateMsg>(state_topic_param, rclcpp::SystemDefaultsQoS());
-  //   realtime_publisher_ = std::make_unique<RtStatePublisher>(publisher_);
-  // } catch (const std::exception &e) {
-  //   // NOLINTNEXTLINE(cert-err33-c)
-  //   fprintf(
-  //     stderr,
-  //     "Exception thrown during publisher creation at configure stage "
-  //     "with message : %s \n",
-  //     e.what()
-  //   );
-  //   return controller_interface::CallbackReturn::ERROR;
-  // }
-
   // Set up the semantic component
   franka_cartesian_velocity_ = std::make_unique<franka_semantic_components::FrankaCartesianVelocityInterface>(
     franka_semantic_components::FrankaCartesianVelocityInterface(false  // No elbow commands
@@ -142,12 +103,6 @@ controller_interface::CallbackReturn LinearVelocityController::on_cleanup(
 
   // Remove semantic component
   franka_cartesian_velocity_.reset();
-
-  // // Remove subscriber
-  // subscriber_.reset();
-  // // Remove publisher
-  // publisher_.reset();
-  // realtime_publisher_.reset();
 
   RCLCPP_INFO(get_node()->get_logger(), "Cleanup successful");
   return CallbackReturn::SUCCESS;
@@ -203,31 +158,6 @@ controller_interface::CallbackReturn LinearVelocityController::on_deactivate(
 controller_interface::return_type LinearVelocityController::update(
   const rclcpp::Time & /*time*/, const rclcpp::Duration &period
 ) {
-  // // Read the commands from the real-time buffer
-  // std::shared_ptr<CmdMsg> *twist_command_msg_ptr = rt_command_ptr_.readFromRT();
-
-  // // Check if a command is received yet
-  // if ((twist_command_msg_ptr == nullptr) || !(*twist_command_msg_ptr)) {
-  //   // No command received yet, continue the controller without setting an
-  //   // output
-  //   return controller_interface::return_type::OK;
-  // }
-
-  // // Check if the received command has the correct number of values
-  // auto twist_command_msg = (*twist_command_msg_ptr);
-
-  // Also publish the commanded state to the real time publisher
-  // if (realtime_publisher_ && realtime_publisher_->trylock()) {
-  //   realtime_publisher_->msg_.header.stamp = time;
-  //   realtime_publisher_->msg_.data = std::vector<double>(N_JOINTS, 0.0);
-  //   for (size_t index = 0ul; index < N_JOINTS; ++index) {
-  //     realtime_publisher_->msg_.data[index] = commanded_joint_torques(static_cast<int>(index));
-  //   }
-  //   realtime_publisher_->unlockAndPublish();
-  // }
-
-  // -----------------------------------------
-
   elapsed_time_ = elapsed_time_ + period;
 
   // Send the output commands

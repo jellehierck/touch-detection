@@ -1,0 +1,9 @@
+fwd_linear_velocity_controller:
+  ros__parameters:
+    # Controller type
+    type: linear_velocity_controller/LinearVelocityController
+
+    # Controller-specific parameters
+    y_vel: 0.1
+    distance: 0.3
+    

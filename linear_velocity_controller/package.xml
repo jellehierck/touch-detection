@@ -29,7 +29,6 @@
   <exec_depend>franka_description</exec_depend>
 
   <!-- First-party ROS dependencies -->
-  <depend>linear_velocity_controller_interfaces</depend>
 
   <!-- Other dependencies -->
   <depend>ruckig</depend>
