@@ -28,7 +28,8 @@ readonly FORCE_PC="force"
 readonly LOCAL_NTP_SERVER_PC="${AI_PC}"
 readonly LOCAL_NTP_SERVER_IP="10.4.0.15"
 readonly OFFSET_CLIENT_PC="${FORCE_PC}"
-readonly DATA_COLLECTION_PC="${VISION_PC}"
+readonly DATA_COLLECTION_PC="${FORCE_PC}"
+# readonly DATA_COLLECTION_PC="${VISION_PC}"
 
 # ROS Domain ID specifications
 readonly ROS_DOMAIN_ID_FORCE_TO_VISION=12 # Clock burst
@@ -383,19 +384,20 @@ case "${pc_name}" in
     readonly ROBOT_LAUNCH_DOCKER_COMPOSE_PATH="${HOME}/nakama_ws/src/touch_detection_robot/docker-compose.yml"
     ;;
 
-"${VISION_PC}")
-    # Where script for clock sync setup is located
-    readonly SETUP_SYNC_SCRIPT_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/chrony/setup_local_network_chrony.sh"
+# Vision PC is disabled as TD experiment only needs 2 PCs
+# "${VISION_PC}")
+#     # Where script for clock sync setup is located
+#     readonly SETUP_SYNC_SCRIPT_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/chrony/setup_local_network_chrony.sh"
 
-    # Where the docker-compose file for clock monitoring is located
-    readonly CLOCK_SYNC_DOCKER_COMPOSE_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/docker-compose.yml"
+#     # Where the docker-compose file for clock monitoring is located
+#     readonly CLOCK_SYNC_DOCKER_COMPOSE_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/docker-compose.yml"
 
-    # Get the clock burst output folder (and make sure it is created)
-    readonly CLOCK_BURST_OUTPUT_FOLDER_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/output/${EXPERIMENT_NAME}"
+#     # Get the clock burst output folder (and make sure it is created)
+#     readonly CLOCK_BURST_OUTPUT_FOLDER_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/output/${EXPERIMENT_NAME}"
 
-    # Get the folder where bag files should be stored
-    readonly BAG_FILE_OUTPUT_FOLDER_PATH= # TODO: 
-    ;;
+#     # Get the folder where bag files should be stored
+#     readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/git/clock_sync_ws/src/touch-detection/recording/output"
+#     ;;
 
 "${FORCE_PC}")
     # Where script for clock sync setup is located
@@ -405,7 +407,10 @@ case "${pc_name}" in
     readonly CLOCK_SYNC_DOCKER_COMPOSE_PATH="${HOME}/thesis/nakama_ws/src/clock_synchronization/docker-compose.yml"
 
     # Get the clock burst output folder (and make sure it is created)
-    readonly FORCE_SENSOR_DOCKER_COMPOSE_PATH= # TODO: 
+    readonly FORCE_SENSOR_DOCKER_COMPOSE_PATH="${HOME}/thesis/Simple_Senseone_eth_container/docker-compose.yaml"
+
+    # Get the folder where bag files should be stored
+    readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/recording/output"
     ;;
 
 "${AI_PC}")
@@ -418,7 +423,6 @@ case "${pc_name}" in
 *)
     echo ""
     echo "ERROR: Invalid PC name: $pc_name"
-    # TODO: Provide a list of valid PCs
     exit 1
     ;;
 esac
@@ -506,10 +510,10 @@ execute_setup_exp() {
         echo ""
         echo "Starting clock monitoring nodes in the background..."
 
-        # Vision PC to Robot PC (second node)
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --detach clock_sync \
-            ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks2 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
+        # # Vision PC to Robot PC (second node)
+        # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+        #     run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --detach clock_sync \
+        #     ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks2 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
         # Force PC to Robot PC (second node)
         docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
@@ -522,41 +526,51 @@ execute_setup_exp() {
         docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
             run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm nakama_handeye_robot \
             ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=false
+
+        # Clean up after experiment is stopped
+        execute_clean_exp
         ;;
 
-    "${VISION_PC}")
-        echo ""
-        echo "Starting clock monitoring nodes in the background..."
+    # Vision PC is disabled as TD experiment only needs 2 PCs
+    # "${VISION_PC}")
+    #     echo ""
+    #     echo "Starting clock monitoring nodes in the background..."
 
-        # Vision PC to Robot PC (first node)
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --detach clock_sync \
-            ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
+    #     # Vision PC to Robot PC (first node)
+    #     docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+    #         run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --detach clock_sync \
+    #         ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
-        # Force PC to Vision PC (second node)
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --detach clock_sync \
-            ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks2 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
+    #     # Force PC to Vision PC (second node)
+    #     docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+    #         run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --detach clock_sync \
+    #         ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks2 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
-        # Start clock burst processing nodes
-        echo ""
-        echo "Restarting any previously running clock bounce processing nodes"
-        docker container ls -qa --filter label=process_bounced_clocks | xargs -r docker rm -f
+    #     # Start clock burst processing nodes
+    #     echo ""
+    #     echo "Restarting any previously running clock bounce processing nodes"
+    #     docker container ls -qa --filter label=process_bounced_clocks | xargs -r docker rm -f
 
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
-            ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+    #     docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+    #         run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
+    #         ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
 
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label process_bounced_clocks=true --detach clock_sync \
-            ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+    #     docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+    #         run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label process_bounced_clocks=true --detach clock_sync \
+    #         ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
 
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
-            ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+    #     docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+    #         run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
+    #         ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
 
-        # TODO: Start rosbag recording
-        ;;
+    #     # Start rosbag recording in de foreground
+    #     docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+    #         run --rm --remove-orphans --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
+    #         ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
+
+    #     # Clean up after experiment is stopped
+    #     execute_clean_exp
+    #     ;;
 
     "${FORCE_PC}")
         echo ""
@@ -567,20 +581,22 @@ execute_setup_exp() {
             run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --detach clock_sync \
             ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
-        # Force PC to Vision PC (first node)
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --detach clock_sync \
-            ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
+        # # Force PC to Vision PC (first node)
+        # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+        #     run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --detach clock_sync \
+        #     ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
-        # TODO: Start force sensor
+        # Start force sensor in the foreground
+        docker compose -f "${FORCE_SENSOR_DOCKER_COMPOSE_PATH}" up
+
+        # Clean up after experiment is stopped
+        execute_clean_exp
         ;;
 
     *)
         echo ""
         echo "ERROR: No experiment setup is configured for PC with name '${pc_name}'."
         echo "       Did you mean to call '$0 --pc ${pc_name} --setup-sync' instead?."
-
-        # TODO: Provide a list of valid PCs
         exit 1
         ;;
     esac
@@ -619,36 +635,26 @@ execute_start_rep() {
                 ros2 service call /bounce_clocks1/start_bounce std_srvs/srv/Trigger --rate 1.0
             sleep 0.2
 
-            # Force PC to Vision PC
-            docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-                run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label clock_bounce_trigger=true --detach clock_sync \
-                ros2 service call /bounce_clocks1/start_bounce std_srvs/srv/Trigger --rate 1.0
-            sleep 0.2
+            # Vision PC is disabled as TD experiment only needs 2 PCs
+            # # Force PC to Vision PC
+            # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+            #     run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label clock_bounce_trigger=true --detach clock_sync \
+            #     ros2 service call /bounce_clocks1/start_bounce std_srvs/srv/Trigger --rate 1.0
+            # sleep 0.2
 
-            # Vision PC to Robot PC
-            docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-                run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label clock_bounce_trigger=true --detach clock_sync \
-                ros2 service call /bounce_clocks1/start_bounce std_srvs/srv/Trigger --rate 1.0
-            sleep 0.2
+            # Vision PC is disabled as TD experiment only needs 2 PCs
+            # # Vision PC to Robot PC
+            # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+            #     run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label clock_bounce_trigger=true --detach clock_sync \
+            #     ros2 service call /bounce_clocks1/start_bounce std_srvs/srv/Trigger --rate 1.0
+            # sleep 0.2
         fi
 
-        # Start the HEC sample taking in the foreground, wait until it is finished or interrupt with ctrl+C
-        # TODO: Replace with TD stuff
-        source "${HANDEYE_WORKSPACE_PATH}"
-        case "${hec_type}" in
-        "${HEC_TYPE_STATIC}")
-            (stopwatch) # Run stopwatch in a subshell
-            ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" ros2 service call /easy_handeye2/calibration/save_calibration easy_handeye2_msgs/srv/SaveCalibration "{}"
-            ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" ros2 service call /easy_handeye2/calibration/save_samples easy_handeye2_msgs/srv/SaveSamples "{}"
-            ;;
-
-        "${HEC_TYPE_DYNAMIC}")
-            ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" ros2 action send_goal /easy_handeye2/calibration/take_multiple_samples easy_handeye2_msgs/action/TakeMultipleSamples \
-                "{sample_frequency: 2.0, max_duration: 120, defer_action_time: 5.0, clear_samples_before: true, compute_calibration: true, save_calibration: true, save_samples: true}" \
-                --feedback
-            ;;
-
-        esac
+        # Start rosbag recording in de foreground
+        # TODO: Use the correct Docker image
+        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+            run --rm --remove-orphans --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
+            ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
 
         # Clean up clock bounce trigger nodes
         docker container ls -qa --filter label=clock_bounce_trigger | xargs -r docker rm -f
@@ -658,7 +664,6 @@ execute_start_rep() {
         echo ""
         echo "ERROR: PC with name '${pc_name}' does not need to start a specific repetition."
         echo "       Did you mean to call '$0 --pc ${pc_name} --setup-exp' instead?."
-        # TODO: Provide a list of valid PCs
         exit 1
         ;;
     esac
@@ -673,8 +678,8 @@ execute_start_rep() {
 # -----------------------------------------------------
 
 execute_empty_rep() {
-    # Check if the output folder exists and contains items
-    if [[ -d "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" && -n "$(find "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" -mindepth 1 -print -quit)" ]]; then
+    # Check if the clock burst output folder exists and contains items, OR the bag file output folder for this experiment exists
+    if [[ (-d "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" && -n "$(find "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" -mindepth 1 -print -quit)") || -d "${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}" ]]; then
 
         # Check if we should force remove, i.e. use sudo
         if [[ "${force_empty_rep}" == "true" ]]; then
@@ -686,13 +691,18 @@ execute_empty_rep() {
                 exit 1
             }
 
-            # Using sudo, remove all items inside the folder but not the output folder itself
+            # Using sudo, remove all items inside the clock sync folder but not the output folder itself
             if ! sudo find "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" -mindepth 1 -delete; then
                 echo ""
                 echo "ERROR: Failed to delete contents of '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'."
-            else
+                exit 1
+            fi
+
+            # Also remove bag file
+            if ! sudo find "${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}" -mindepth 0 -delete; then
                 echo ""
-                echo "Repetition data is REMOVED, deleted everything in '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'."
+                echo "ERROR: Failed to delete '${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}'."
+                exit 1
             fi
 
         else
@@ -702,15 +712,24 @@ execute_empty_rep() {
                 echo ""
                 echo "ERROR: Failed to delete contents of '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'."
                 echo "       Try calling with '--force-empty-rep' instead."
-            else
+                exit 1
+            fi
+
+            # Also remove bag file
+            if ! find "${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}" -mindepth 0 -delete; then
                 echo ""
-                echo "Repetition data is REMOVED, deleted everything in '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'."
+                echo "ERROR: Failed to delete '${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}'."
+                exit 1
             fi
         fi
+        echo ""
+        echo "Repetition data is REMOVED, deleted everything in '${CLOCK_BURST_OUTPUT_FOLDER_PATH}' and '${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}'."
+
     else
         # No repetition files found, so we don't need to do anything
         echo ""
-        echo "Repetition not emptied: no files found in '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'."
+        echo "Repetition not emptied: no files found in '${CLOCK_BURST_OUTPUT_FOLDER_PATH}' or '${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}'."
+
     fi
 }
 
