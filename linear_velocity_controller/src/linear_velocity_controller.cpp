@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <exception>
 #include <memory>
+#include <string>
 
 #include <Eigen/src/Core/Matrix.h>
 
@@ -169,6 +170,8 @@ controller_interface::CallbackReturn LinearVelocityController::on_activate(
     trajectory_generator_ =
       std::make_shared<LinearVelocityTrajectoryGenerator>(LinearVelocityTrajectoryGenerator(target_velocity));
   }
+  const std::string trajectory_description = trajectory_generator_->describe();
+  RCLCPP_INFO(get_node()->get_logger(), "%s", trajectory_description.c_str());
   elapsed_time_ = rclcpp::Duration(0, 0);
 
   // Set command interfaces
@@ -234,11 +237,6 @@ controller_interface::return_type LinearVelocityController::update(
     RCLCPP_FATAL(get_node()->get_logger(), "Set command failed. Did you activate the elbow command interface?");
     return controller_interface::return_type::ERROR;
   }
-
-  RCLCPP_INFO_THROTTLE(
-    get_node()->get_logger(), *get_node()->get_clock(), 100, "Sending velocities %f, %f, %f",
-    cartesian_linear_velocity.x(), cartesian_linear_velocity.y(), cartesian_linear_velocity.z()
-  );
 
   return controller_interface::return_type::OK;
 }

@@ -2,16 +2,19 @@
 #define LINEAR_VELOCITY_CONTROLLER_GENERATE_TRAJECTORY
 
 #include <cstddef>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 #include <Eigen/Core>
 #include <Eigen/src/Core/Matrix.h>
 
+#include <ruckig/result.hpp>
 #include <ruckig/ruckig.hpp>
 #include <ruckig/input_parameter.hpp>
 #include <ruckig/output_parameter.hpp>
 #include <ruckig/utils.hpp>
 #include <ruckig/trajectory.hpp>
-#include <stdexcept>
 
 namespace linear_velocity_controller {
 
@@ -39,6 +42,7 @@ class LinearVelocityTrajectoryGenerator {
    * Construct a new Linear Velocity Trajectory which will accelerate and immediately decelerate.
    *
    * @param target_velocity Target velocity in the constant velocity phase.
+   * @throws std::runtime_error if any subtrajectory could not be generated.
    */
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   explicit LinearVelocityTrajectoryGenerator(DimVector target_velocity)
@@ -49,6 +53,12 @@ class LinearVelocityTrajectoryGenerator {
 
   /**
    * Calculate the distance and duration during the constant velocity phase to obtain the total target distance.
+   *
+   * @param target_velocity Target velocity in the constant velocity phase.
+   * @param target_distance The total distance to travel during the trajectory.
+   *
+   * @throws std::invalid_argument if the target_distance is too short to accomodate acceleration and deceleration.
+   * @throws std::runtime_error if any subtrajectory could not be generated.
    */
   static LinearVelocityTrajectoryGenerator with_target_distance(DimVector target_velocity, double target_distance) {
     LinearVelocityTrajectoryGenerator trajectory_generator(target_velocity);
@@ -63,13 +73,20 @@ class LinearVelocityTrajectoryGenerator {
     }
 
     // Calculate how long the constant velocity phase will take
-    trajectory_generator.constant_velocity_duration_ = trajectory_generator.constant_velocity_distance_ / target_velocity.norm();
+    trajectory_generator.constant_velocity_duration_ =
+      trajectory_generator.constant_velocity_distance_ / target_velocity.norm();
 
     return trajectory_generator;
   }
 
   /**
    * Calculate the distance and duration during the constant velocity phase to obtain the total target duration.
+   *
+   * @param target_velocity Target velocity in the constant velocity phase.
+   * @param target_duration The total duration of the trajectory.
+   *
+   * @throws std::invalid_argument if the target_duration is too short to accomodate acceleration and deceleration.
+   * @throws std::runtime_error if any subtrajectory could not be generated.
    */
   static LinearVelocityTrajectoryGenerator with_target_duration(DimVector target_velocity, double target_duration) {
     LinearVelocityTrajectoryGenerator trajectory_generator(target_velocity);
@@ -84,7 +101,8 @@ class LinearVelocityTrajectoryGenerator {
     }
 
     // Calculate how far to travel during the constant velocity phase
-    trajectory_generator.constant_velocity_distance_ = target_velocity.norm() * trajectory_generator.constant_velocity_duration_;
+    trajectory_generator.constant_velocity_distance_ =
+      target_velocity.norm() * trajectory_generator.constant_velocity_duration_;
 
     return trajectory_generator;
   }
@@ -95,30 +113,36 @@ class LinearVelocityTrajectoryGenerator {
    * @return `DimVector`
    */
   DimVector velocity_at_time(double time_sec) {
-    DimVector pos;
-    DimVector vel;
-    DimVector acc;
+    DimVector pos;  // Unused
+    DimVector vel;  // Will contain the velocity at a specified time
+    DimVector acc;  // Unused
 
     // Before acceleration phase
-    if (time_sec < 0.0) {
+    const double t_start = 0.0;
+    if (time_sec < t_start) {
       return DimVector::Constant(0.0);
     }
 
     // Acceleration phase
-    if (time_sec >= 0.0 && time_sec < acceleration_duration_) {
-      acceleration_subtrajectory_.at_time(time_sec, pos, vel, acc);
+    const double t_acc_start = t_start;
+    const double t_acc_end = t_acc_start + acceleration_duration();
+    if (time_sec >= t_acc_start && time_sec < t_acc_end) {
+      acceleration_subtrajectory_.at_time(time_sec - t_acc_start, pos, vel, acc);
       return vel;
     }
 
     // Constant velocity phase
-    if (time_sec >= acceleration_duration_ && time_sec < acceleration_duration_ + constant_velocity_duration_) {
+    const double t_const_vel_start = t_acc_end;
+    const double t_const_vel_end = t_const_vel_start + constant_vel_duration();
+    if (time_sec >= t_const_vel_start && time_sec < t_const_vel_end) {
       return constant_velocity_;
     }
 
     // Deceleration phase
-    if (time_sec >= acceleration_duration_ + constant_velocity_duration_ &&
-        time_sec < acceleration_duration_ + constant_velocity_duration_ + deceleration_duration_) {
-      deceleration_subtrajectory_.at_time(time_sec, pos, vel, acc);
+    const double t_dec_start = t_const_vel_end;
+    const double t_dec_end = t_dec_start + deceleration_duration();
+    if (time_sec >= t_dec_start && time_sec < t_dec_end) {
+      deceleration_subtrajectory_.at_time(time_sec - t_dec_start, pos, vel, acc);
       return vel;
     }
 
@@ -135,6 +159,12 @@ class LinearVelocityTrajectoryGenerator {
   /// Get the distance travelled during the acceleration phase.
   double acceleration_distance() const { return acceleration_distance_; }
 
+  /// Get the duration of the deceleration phase.
+  double constant_vel_duration() const { return constant_velocity_duration_; }
+
+  /// Get the distance travelled during the deceleration phase.
+  double constant_vel_distance() const { return constant_velocity_distance_; }
+
   /// Get the deceleration subtrajectory.
   SubTrajectory deceleration_subtrajectory() const { return deceleration_subtrajectory_; }
 
@@ -144,9 +174,22 @@ class LinearVelocityTrajectoryGenerator {
   /// Get the distance travelled during the deceleration phase.
   double deceleration_distance() const { return deceleration_distance_; }
 
+  std::string describe() const {
+    std::stringstream description;
+    description << "\nAcceleration: duration = " << acceleration_duration()
+                << " s, distance = " << acceleration_distance() << " m";
+    description << "\nConstant vel: duration = " << constant_vel_duration()
+                << " s, distance = " << constant_vel_distance() << " m";
+    description << "\nDeceleration: duration = " << deceleration_duration()
+                << " s, distance = " << deceleration_distance() << " m";
+    return description.str();
+  }
+
  private:
   /**
    * Generate the acceleration phase up to a constant target velocity.
+   *
+   * @throws std::runtime_error if the subtrajectory could not be generated.
    */
   void generate_acceleration_subtrajectory(DimVector target_velocity) {
     ruckig::Ruckig<N_DIMS, ruckig::EigenVector>               generator;
@@ -156,10 +199,9 @@ class LinearVelocityTrajectoryGenerator {
     );
 
     // Generate the result and store the resulting subtrajectory
-    const ruckig::Result result = generator.calculate(input, deceleration_subtrajectory_);
-    if (result != ruckig::Result::Finished) {
-      // TODO: Handle error
-      std::cout << "Invalid input!" << std::endl;
+    const ruckig::Result result = generator.calculate(input, acceleration_subtrajectory_);
+    if (result < 0) {
+      throw std::runtime_error("Acceleration subtrajectory could not be computed");
     }
     acceleration_duration_ = acceleration_subtrajectory_.get_duration();
     acceleration_distance_ = subtrajectory_distance(acceleration_subtrajectory_);
@@ -167,6 +209,8 @@ class LinearVelocityTrajectoryGenerator {
 
   /**
    * Generate the deceleration phase up to a constant target velocity.
+   *
+   * @throws std::runtime_error if the subtrajectory could not be generated.
    */
   void generate_deceleration_subtrajectory(DimVector target_velocity) {
     ruckig::Ruckig<N_DIMS, ruckig::EigenVector>               generator;
@@ -177,9 +221,8 @@ class LinearVelocityTrajectoryGenerator {
 
     // Generate the result and store the resulting subtrajectory
     const ruckig::Result result = generator.calculate(input, deceleration_subtrajectory_);
-    if (result != ruckig::Result::Finished) {
-      // TODO: Handle error
-      std::cout << "Invalid input!" << std::endl;
+    if (result < 0) {
+      throw std::runtime_error("Acceleration subtrajectory could not be computed");
     }
     deceleration_duration_ = deceleration_subtrajectory_.get_duration();
     deceleration_distance_ = subtrajectory_distance(deceleration_subtrajectory_);
