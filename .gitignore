@@ -1,0 +1,30 @@
+# Python environment
+.venv/
+
+# Compiled Python bytecode
+*.py[cod]
+
+# Log files
+*.log
+
+# IDE settings
+.idea/
+.vscode/
+
+# ROS build artifacts
+build/
+install/
+log/
+
+# Opinionated formatting or linting tools
+.ruff.toml
+.clang-format
+.clang-tidy
+.clangd
+
+# Draw io artefacts
+.$*.bkp
+.$*.dtmp
+
+# Disregard the output folder as it is for measurement data
+output/
