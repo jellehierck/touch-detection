@@ -591,7 +591,9 @@ execute_setup_exp() {
         #     ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
         # Start force sensor in the foreground
-        docker compose -f "${FORCE_SENSOR_DOCKER_COMPOSE_PATH}" up
+        docker compose -f "${FORCE_SENSOR_DOCKER_COMPOSE_PATH}" \
+            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm ethercat_senseone_container \
+            bash -c "source /opt/ros/humble/setup.bash && cd /ros2_ws && source install/setup.bash  && ros2 run senseone_eth_node senseone_eth_node --ros-args -p eth_interface_name:=enx00e04c680bc3 -p sinc_length:=64"
 
         # Clean up after experiment is stopped
         execute_clean_exp
@@ -655,13 +657,16 @@ execute_start_rep() {
             # sleep 0.2
         fi
 
-        # Start rosbag recording in de foreground
+        # Start rosbag recording in de background
         docker compose -f "${BAGFILE_RECORDING_DOCKER_COMPOSE_PATH}" \
-            run --rm --remove-orphans --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
+            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output --label bag_recording=true --detach touch_detection_recording \
             ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
 
-        # Clean up clock bounce trigger nodes
+
+
+        # Clean up clock bounce trigger nodes and bag recording container
         docker container ls -qa --filter label=clock_bounce_trigger | xargs -r docker rm -f
+        docker container ls -qa --filter label=bag_recording | xargs -r docker rm -f
         ;;
 
     *)
