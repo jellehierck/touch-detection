@@ -40,6 +40,9 @@ readonly ROS_DOMAIN_ID_EXPERIMENT=40      # Experiment nodes
 # Time to wait after local sync setup
 readonly DEFAULT_CLOCK_SYNC_SETTLE_TIME_SECONDS=$((5 * 60))
 
+# Robot loops (moving forward and backward) to go through per repetition
+readonly ROBOT_LOOPS=5
+
 # -----------------------------------------------------
 # Informative print functions
 # -----------------------------------------------------
@@ -528,8 +531,8 @@ execute_setup_exp() {
         echo ""
         echo "Starting robot launch"
         docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm nakama_handeye_robot \
-            ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=false
+            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
+            ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=true
 
         # Clean up after experiment is stopped
         execute_clean_exp
@@ -618,6 +621,37 @@ execute_start_rep() {
 
     # Check PC name and start nodes specific to that PC
     case "${pc_name}" in
+    "${ROBOT_PC}")
+
+        # Ensure that Ctrl+C interrupts the repetition
+        trap "echo -e '\nInterrupted by user. Exiting.'; exit 0" SIGINT
+
+        loop_nr=1
+        while ((loop_nr <= ROBOT_LOOPS)); do
+            # Move robot forward when user presses enter
+            read -r -n 1 -s -p "Press any key to move forward  (${loop_nr}/${ROBOT_LOOPS}) or 'q' to quit: " input
+            echo
+            if [[ "$input" == "q" ]]; then
+                kill -s SIGINT $$
+            fi
+            docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
+                run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
+                ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [fwd_linear_velocity_controller], deactivate_controllers: [bwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
+
+            # Move robot backward when user presses enter
+            read -r -n 1 -s -p "Press any key to move backward (${loop_nr}/${ROBOT_LOOPS}) or 'q' to quit: " input
+            echo
+            if [[ "$input" == "q" ]]; then
+                kill -s SIGINT $$
+            fi
+            docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
+                run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
+                ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [fwd_linear_velocity_controller], deactivate_controllers: [bwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
+
+            ((loop_nr++))
+        done
+        ;;
+
     "${DATA_COLLECTION_PC}")
         if [[ -d "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" && -n "$(find "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" -mindepth 1 -print -quit)" || -d "${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}" ]]; then
             echo ""
@@ -657,16 +691,13 @@ execute_start_rep() {
             # sleep 0.2
         fi
 
-        # Start rosbag recording in de background
+        # Start rosbag recording in de foreground
         docker compose -f "${BAGFILE_RECORDING_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output --label bag_recording=true --detach touch_detection_recording \
+            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
             ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
-
-
 
         # Clean up clock bounce trigger nodes and bag recording container
         docker container ls -qa --filter label=clock_bounce_trigger | xargs -r docker rm -f
-        docker container ls -qa --filter label=bag_recording | xargs -r docker rm -f
         ;;
 
     *)
