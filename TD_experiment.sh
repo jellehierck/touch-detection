@@ -362,10 +362,10 @@ esac
 
 if [[ "${demo}" == "false" ]]; then
     # Infer the experiment name from the experiment conditions and repetition number
-    readonly EXPERIMENT_NAME="exp_${exp_nr}_${sync_type}_offset_${offset}_rep_${rep_nr}"
+    readonly EXPERIMENT_NAME="td_exp_${exp_nr}_${sync_type}_offset_${offset}_rep_${rep_nr}"
 else
     # Use a special experiment name for demo
-    readonly EXPERIMENT_NAME="demo_${exp_nr}_${sync_type}_offset_${offset}_rep_${rep_nr}"
+    readonly EXPERIMENT_NAME="td_demo_${exp_nr}_${sync_type}_offset_${offset}_rep_${rep_nr}"
 fi
 # -----------------------------------------------------
 # Obtain used paths from PCs

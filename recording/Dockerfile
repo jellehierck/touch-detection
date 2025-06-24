@@ -25,18 +25,19 @@ SHELL ["/bin/bash", "-c"]
 # Install basic dependencies and sudo
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
-    curl \
-    gdb \
+    # curl \
+    # gdb \
     git \
     nano \
     xauth \
-    openssh-client \
+    # openssh-client \
     bash-completion \
-    python3-pip \
-    python3-colcon-common-extensions \
-    python3-colcon-argcomplete \
-    python3-venv \
+    # python3-pip \
+    # python3-colcon-common-extensions \
+    # python3-colcon-argcomplete \
+    # python3-venv \
     ros-$ROS_DISTRO-plotjuggler-ros \
+    ros-$ROS_DISTRO-ros2bag \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Arguments for custom user
