@@ -9,7 +9,6 @@
 #include <Eigen/Core>
 #include <Eigen/src/Core/Matrix.h>
 
-#include <ruckig/result.hpp>
 #include <ruckig/ruckig.hpp>
 #include <ruckig/input_parameter.hpp>
 #include <ruckig/output_parameter.hpp>

@@ -69,7 +69,6 @@ install(
 install(
   DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
-  OPTIONAL
 )
 
 if(BUILD_TESTING)

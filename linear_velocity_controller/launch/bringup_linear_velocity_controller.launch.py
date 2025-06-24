@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import GroupAction, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import SetRemap
+
+from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -25,15 +26,18 @@ def generate_launch_description() -> LaunchDescription:
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     [
-                        str(Path(get_package_share_directory("linear_velocity_controller")) / "launch" / "linear_velocity_controller.launch.py"),
+                        str(
+                            Path(get_package_share_directory("linear_velocity_controller"))
+                            / "launch"
+                            / "linear_velocity_controller.launch.py"
+                        ),
                     ]
                 ),
             ),
         ],
         forwarding=True,  # Make the launch arguments from the current launch file available inside this GroupAction
-        scoped=True  # Any changes to launch arguments inside this GroupAction do not "spill" outside of the GroupAction
+        scoped=True,  # Any changes to launch arguments inside this GroupAction do not "spill" outside the GroupAction
     )
-
 
     # Controller manager
     controller_manager_launch = GroupAction(
@@ -41,18 +45,21 @@ def generate_launch_description() -> LaunchDescription:
             # Define remappings which are applied to all nodes within this GroupAction
             SetRemap("joint_states", "franka/joint_states"),
             SetRemap("controller_manager/robot_description", "robot_description"),
-
             # Include the controller manager nodes
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     [
-                        str(Path(get_package_share_directory("linear_velocity_controller")) / "launch" / "controller_manager.launch.py"),
+                        str(
+                            Path(get_package_share_directory("linear_velocity_controller"))
+                            / "launch"
+                            / "controller_manager.launch.py"
+                        ),
                     ]
                 ),
             ),
         ],
         forwarding=True,  # Make the launch arguments from the current launch file available inside this GroupAction
-        scoped=True  # Any changes to launch arguments inside this GroupAction do not "spill" outside of the GroupAction
+        scoped=True,  # Any changes to launch arguments inside this GroupAction do not "spill" outside the GroupAction
     )
 
     # Robot description
@@ -62,7 +69,11 @@ def generate_launch_description() -> LaunchDescription:
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     [
-                        str(Path(get_package_share_directory("linear_velocity_controller")) / "launch" / "robot_description.launch.py"),
+                        str(
+                            Path(get_package_share_directory("linear_velocity_controller"))
+                            / "launch"
+                            / "robot_description.launch.py"
+                        ),
                     ]
                 ),
                 launch_arguments={
@@ -73,7 +84,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
         ],
         forwarding=True,  # Make the launch arguments from the current launch file available inside this GroupAction
-        scoped=True  # Any changes to launch arguments inside this GroupAction do not "spill" outside of the GroupAction
+        scoped=True,  # Any changes to launch arguments inside this GroupAction do not "spill" outside the GroupAction
     )
 
     # ---------- Construct launch description ----------

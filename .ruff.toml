@@ -1,0 +1,67 @@
+line-length = 120
+
+target-version = "py310"
+
+[format]
+quote-style = "double"
+
+[lint]
+select = ["ALL"] # TODO: Add ALL and specific ignores
+
+ignore = [
+    "D203",   # Having an empty line between docstring and class looks ugly. https://docs.astral.sh/ruff/rules/one-blank-line-before-class/
+    "D205",   # I often want a brief description which does not fit on one line, so having to split that makes no sense. https://docs.astral.sh/ruff/rules/blank-line-after-summary/
+    "D213",   # I like this over D212 https://docs.astral.sh/ruff/rules/multi-line-summary-second-line/
+    "D400",   # Redundant if D415 is enabled. https://docs.astral.sh/ruff/rules/ends-in-period/
+    "D401",   # Writing in imperative mood is redundant in most cases. https://docs.astral.sh/ruff/rules/non-imperative-mood/
+    "COM812", # "Trailing comma missing". If black is happy, I'm happy. https://docs.astral.sh/ruff/rules/missing-trailing-comma/
+    "ANN002", # IMO it is not useful to typehint args. https://docs.astral.sh/ruff/rules/missing-type-args/
+    "ANN003", # IMO it is not useful to typehint kwargs. https://docs.astral.sh/ruff/rules/missing-type-kwargs/
+    "ANN101", # Deprecated setting. https://docs.astral.sh/ruff/rules/missing-type-self/
+    "ANN102", # Deprecated setting. https://docs.astral.sh/ruff/rules/missing-type-cls/
+    "ERA001", # Having commented-out code is too common for me. https://docs.astral.sh/ruff/rules/commented-out-code/
+    "TD002",  # I assume there is only one author for this code. https://docs.astral.sh/ruff/rules/missing-todo-author/
+    "TD003",  # There are currently no links to issues for todos. https://docs.astral.sh/ruff/rules/missing-todo-link/
+    "ISC001", # Recommended to disable because it conflicts with the formatter. https://docs.astral.sh/ruff/rules/single-line-implicit-string-concatenation/
+    "FBT",    # Boolean traps do not concern me. https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
+    "PD011",  # Pandas .to_numpy has too many false positives. https://docs.astral.sh/ruff/rules/pandas-use-of-dot-values/
+
+    # TODO: The following rules should be enabled at some point when the code is more matue
+    "FIX002", # The code is not ready for production yet. https://docs.astral.sh/ruff/rules/line-contains-todo/
+    "D100",   # Writing public module docstrings takes a little too much time now. https://docs.astral.sh/ruff/rules/undocumented-public-module/
+]
+
+# Options to not fix automatically
+unfixable = [
+    "F401",   # Ensure that unused imports are not optimized away (very annoying while writing code and formatting on save) https://docs.astral.sh/ruff/rules/unused-import/
+    "RUF100", # Ensure that unused noqa directives are not removed (they should only be removed consciously) https://docs.astral.sh/ruff/rules/unused-noqa/
+]
+
+# Ignore specific codes in specific file globs
+[lint.extend-per-file-ignores]
+# Glob that matches all Python launch files
+"**/launch/*.launch.py" = [
+    "INP001", # Launch files are never part of a package. https://docs.astral.sh/ruff/rules/implicit-namespace-package/
+]
+
+[lint.isort]
+section-order = [
+    "future",
+    "standard-library",
+    "ros-builtin",
+    "ros-thirdparty",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[lint.isort.sections]
+# Group all ROS 2 imports into a separate section.
+ros-builtin = [
+    "rclpy",
+    "rcl_interfaces",
+    "builtin_interfaces",
+    "launch",
+    "launch_ros",
+]
+ros-thirdparty = ["controller_manager_msgs"]

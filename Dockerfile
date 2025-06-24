@@ -27,7 +27,8 @@ USER $USERNAME
 # Install APT dependencies as cache layer
 RUN sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
-        python3-venv
+        python3-venv \
+        ros-$ROS_DISTRO-plotjuggler-ros
 
 # Set the workspace where the touch_detection_robot packages will be stored and built
 ENV TOUCH_DETECTION_WS=/home/$USERNAME/touch_detection_ws
@@ -69,6 +70,7 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
 
 # Copy this package's source packages to the src/ folder
 WORKDIR $TOUCH_DETECTION_WS/src
+COPY touch_detection_bringup/ touch_detection_bringup/
 COPY linear_velocity_controller/ linear_velocity_controller/
 COPY linear_velocity_controller_interfaces/ linear_velocity_controller_interfaces/
 
@@ -95,7 +97,8 @@ RUN source /opt/ros/$ROS_DISTRO/setup.bash \
     && source .venv/bin/activate \
     # If more packages need the virtual environment build, add them at the end of the following line
     && python -m colcon build --symlink-install --packages-up-to \
-        linear_velocity_controller
+        linear_velocity_controller \
+        touch_detection_bringup
 
 # Extend the default ROS entrypoint script so that the new workspace is also sourced by default
 RUN sudo sed --in-place \
