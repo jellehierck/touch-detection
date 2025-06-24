@@ -35,6 +35,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     python3-colcon-common-extensions \
     python3-colcon-argcomplete \
+    python3-venv \
+    ros-$ROS_DISTRO-plotjuggler-ros \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Arguments for custom user
@@ -69,7 +71,8 @@ RUN mkdir src \
 
 # Remove all folders except franka_msgs
 WORKDIR $FRANKA_WS/src
-RUN rm -r $(ls -A | grep -v franka_msgs)
+RUN mv ./franka_ros2/franka_msgs/ ./franka_msgs/ \
+    && rm -rf ./franka_ros2/
 
 # Build all franka_ros2 stuff
 WORKDIR $FRANKA_WS
@@ -88,59 +91,53 @@ RUN echo "source $FRANKA_WS/install/setup.bash" >> /home/$USERNAME/.bashrc
 
 # ---------------------------------------------------------------------------------------------------------------
 
-# Install APT dependencies as cache layer
-RUN sudo apt-get update \
-    && sudo apt-get install -y --no-install-recommends \
-        python3-venv \
-        ros-$ROS_DISTRO-plotjuggler-ros
+# # Set the workspace where the touch_detection_robot packages will be stored and built
+# ENV TOUCH_DETECTION_WS=/home/$USERNAME/touch_detection_ws
 
-# Set the workspace where the touch_detection_robot packages will be stored and built
-ENV TOUCH_DETECTION_WS=/home/$USERNAME/touch_detection_ws
+# # Prepare a Python virtual environment for packages which need that later
+# WORKDIR $TOUCH_DETECTION_WS
+# RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+#     && python3 -m venv .venv --system-site-packages --symlinks \
+#     && touch .venv/COLCON_IGNORE
 
-# Prepare a Python virtual environment for packages which need that later
-WORKDIR $TOUCH_DETECTION_WS
-RUN source /opt/ros/$ROS_DISTRO/setup.bash \
-    && python3 -m venv .venv --system-site-packages --symlinks \
-    && touch .venv/COLCON_IGNORE
+# # Copy this package's source packages to the src/ folder
+# WORKDIR $TOUCH_DETECTION_WS/src
+# # TODO: If we need any code running in this folder, copy the folder here
 
-# Copy this package's source packages to the src/ folder
-WORKDIR $TOUCH_DETECTION_WS/src
-# TODO: If we need any code running in this folder, copy the folder here
+# # Install all missing Python dependencies as specified in their requirements.txt files
+# WORKDIR $TOUCH_DETECTION_WS
+# RUN source .venv/bin/activate \
+#     && find ./src -name "requirement*.txt" -type f -exec pip3 install -r '{}' ';'
 
-# Install all missing Python dependencies as specified in their requirements.txt files
-WORKDIR $TOUCH_DETECTION_WS
-RUN source .venv/bin/activate \
-    && find ./src -name "requirement*.txt" -type f -exec pip3 install -r '{}' ';'
+# # # Install all ROS dependencies too
+# # RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+# #     && source $FRANKA_WS/install/setup.bash \
+# #     # Install rosdep dependencies from the imported repositories
+# #     && sudo apt-get update \
+# #     && rosdep update \
+# #     && rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y \
+# #     # Remove cache to reduce image size
+# #     && sudo apt-get clean \
+# #     && sudo rm -rf /var/lib/apt/lists/*
 
-# Install all ROS dependencies too
-RUN source /opt/ros/$ROS_DISTRO/setup.bash \
-    && source $FRANKA_WS/install/setup.bash \
-    # Install rosdep dependencies from the imported repositories
-    && sudo apt-get update \
-    && rosdep update \
-    && rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y \
-    # Remove cache to reduce image size
-    && sudo apt-get clean \
-    && sudo rm -rf /var/lib/apt/lists/*
+# # Build all packages with the virtual environment sourced
+# WORKDIR $TOUCH_DETECTION_WS
+# RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+#     && source $FRANKA_WS/install/setup.bash \
+#     && source .venv/bin/activate \
+#     # If more packages need the virtual environment build, add them at the end of the following line
+#     && python -m colcon build --symlink-install 
+#         # --packages-up-to \
+#         #     # TODO: Add packages to build
 
-# Build all packages with the virtual environment sourced
-WORKDIR $TOUCH_DETECTION_WS
-RUN source /opt/ros/$ROS_DISTRO/setup.bash \
-    && source $FRANKA_WS/install/setup.bash \
-    && source .venv/bin/activate \
-    # If more packages need the virtual environment build, add them at the end of the following line
-    && python -m colcon build --symlink-install 
-        # --packages-up-to \
-        #     # TODO: Add packages to build
+# # Extend the default ROS entrypoint script so that the new workspace is also sourced by default
+# RUN sudo sed --in-place \
+#     --expression '$isource "$TOUCH_DETECTION_WS/install/setup.bash" --' \
+#     /ros_entrypoint.sh
 
-# Extend the default ROS entrypoint script so that the new workspace is also sourced by default
-RUN sudo sed --in-place \
-    --expression '$isource "$TOUCH_DETECTION_WS/install/setup.bash" --' \
-    /ros_entrypoint.sh
-
-# Add the touch detection workspace to the .bashrc so that every shell has it opened by default
-# Note that this is only necessary for docker exec -it ... commands, otherwise the ENTRYPOINT script already takes care of this  
-RUN echo "source $TOUCH_DETECTION_WS/install/setup.bash" >> /home/$USERNAME/.bashrc
+# # Add the touch detection workspace to the .bashrc so that every shell has it opened by default
+# # Note that this is only necessary for docker exec -it ... commands, otherwise the ENTRYPOINT script already takes care of this  
+# RUN echo "source $TOUCH_DETECTION_WS/install/setup.bash" >> /home/$USERNAME/.bashrc
 
 # Set the landing workspace when the container is started
 ENV ROS2_WS=/home/$USERNAME/ros2_ws

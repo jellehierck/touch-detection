@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+      args:
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
 
     # Set a suitable container name
     container_name: touch_detection_recording
