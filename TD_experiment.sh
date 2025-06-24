@@ -124,16 +124,14 @@ print_conditions() {
     cat <<EOF
 TD conditions:
 
-* Number of repetitions is the recommended max number, this is not checked.
-
-| Exp nr | Sync type    | Offset | Nr repetitions* |
-| ------ | ------------ | ------ | --------------- |
-| 1      | timesyncd    | 0s     | 10              |
-| 2      | chrony_local | 0s     | 10              |
-| 3      | chrony_local | 15ms   | 10              |
-| 4      | chrony_local | 45ms   | 10              |
-| 5      | chrony_local | 150ms  | 10              |
-| 6      | chrony_local | 1s     | 10              |
+| Exp nr | Sync type    | Offset |
+| ------ | ------------ | ------ |
+| 1      | timesyncd    | 0s     |
+| 2      | chrony_local | 0s     |
+| 3      | chrony_local | 15ms   |
+| 4      | chrony_local | 45ms   |
+| 5      | chrony_local | 150ms  |
+| 6      | chrony_local | 1s     |
 
 EOF
 }
@@ -325,11 +323,11 @@ case "${exp_nr}" in
     readonly offset="${OFFSET_45MS}"
     ;;
 "5")
-    readonly sync_type="${CLOCK_SYNC_TIMESYNCD}"
+    readonly sync_type="${CLOCK_SYNC_CHRONY_LOCAL}"
     readonly offset="${OFFSET_150MS}"
     ;;
 "6")
-    readonly sync_type="${CLOCK_SYNC_TIMESYNCD}"
+    readonly sync_type="${CLOCK_SYNC_CHRONY_LOCAL}"
     readonly offset="${OFFSET_1S}"
     ;;
 *)
@@ -406,8 +404,14 @@ case "${pc_name}" in
     # Where the docker-compose file for clock monitoring is located
     readonly CLOCK_SYNC_DOCKER_COMPOSE_PATH="${HOME}/thesis/nakama_ws/src/clock_synchronization/docker-compose.yml"
 
-    # Get the clock burst output folder (and make sure it is created)
+    # Get the clock burst output folder
+    readonly CLOCK_BURST_OUTPUT_FOLDER_PATH="${HOME}/thesis/nakama_ws/src/clock_synchronization/output/${EXPERIMENT_NAME}"
+
+    # Where the docker-compose file for the force sensor is located
     readonly FORCE_SENSOR_DOCKER_COMPOSE_PATH="${HOME}/thesis/Simple_Senseone_eth_container/docker-compose.yaml"
+
+    # Where the docker-compose file for the bagfile recording is located
+    readonly BAGFILE_RECORDING_DOCKER_COMPOSE_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/recording/docker-compose.yml"
 
     # Get the folder where bag files should be stored
     readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/recording/output"
@@ -652,7 +656,7 @@ execute_start_rep() {
         fi
 
         # Start rosbag recording in de foreground
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+        docker compose -f "${BAGFILE_RECORDING_DOCKER_COMPOSE_PATH}" \
             run --rm --remove-orphans --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
             ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
 
