@@ -9,7 +9,7 @@ docker compose build
 ## Start launch file
 
 ```bash
-docker compose run --rm --remove-orphans touch_detection_robot ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false
+docker compose run --rm --remove-orphans touch_detection_robot ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=false
 ```
 
 ## Activate fwd controller
@@ -24,16 +24,24 @@ docker compose run --rm --remove-orphans touch_detection_robot ros2 service call
 docker compose run --rm --remove-orphans touch_detection_robot ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [bwd_linear_velocity_controller], deactivate_controllers: [fwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
 ```
 
-## Start launch file without plotjuggler
-
-```bash
-docker compose run --rm --remove-orphans touch_detection_robot ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=false
-```
-
-## Only plotjuggler
+## Online plotjuggler
 
 ```bash
 docker compose run --rm --remove-orphans touch_detection_robot ros2 launch touch_detection_bringup plotjuggler.launch.py
+```
+
+## Record rosbag
+
+```bash
+cd /home/fr3/nakama_ws/src/touch_detection_robot/recording
+docker compose run --rm --remove-orphans --volume /home/fr3/nakama_ws/src/touch_detection_robot/output:/output touch_detection_recording ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/test
+```
+
+## Rosbag plotjuggler
+
+```bash
+cd /home/fr3/nakama_ws/src/touch_detection_robot/recording
+docker compose run --rm --remove-orphans --volume /home/fr3/nakama_ws/src/touch_detection_robot/output:/output touch_detection_recording ros2 run plotjuggler plotjuggler
 ```
 
 ## Poses
