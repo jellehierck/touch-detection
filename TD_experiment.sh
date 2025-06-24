@@ -613,10 +613,11 @@ execute_start_rep() {
     # Check PC name and start nodes specific to that PC
     case "${pc_name}" in
     "${DATA_COLLECTION_PC}")
-        if [[ -d "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" && -n "$(find "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" -mindepth 1 -print -quit)" ]]; then
+        if [[ -d "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" && -n "$(find "${CLOCK_BURST_OUTPUT_FOLDER_PATH}" -mindepth 1 -print -quit)" || -d "${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}" ]]; then
             echo ""
             echo "ERROR: This repetition already has data and will not be overwritten. This script will exit."
-            echo "       The following folder is nonempty: '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'."
+            echo "       The following folder is nonempty: '${CLOCK_BURST_OUTPUT_FOLDER_PATH}'"
+            echo "       OR a bagfile already exists in '${BAG_FILE_OUTPUT_FOLDER_PATH}/${EXPERIMENT_NAME}'."
             echo "       If you want to remove the data, use the '--empty-rep' flag."
             exit 1
         fi
@@ -651,7 +652,6 @@ execute_start_rep() {
         fi
 
         # Start rosbag recording in de foreground
-        # TODO: Use the correct Docker image
         docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
             run --rm --remove-orphans --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
             ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
