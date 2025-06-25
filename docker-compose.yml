@@ -24,4 +24,6 @@ services:
       # Existing environment variables can also be overridden
       ROS_DOMAIN_ID: 40
 
+      RMW_IMPLEMENTATION: "rmw_cyclonedds_cpp"
+
     # TODO: Add secret for Franka Desk credentials

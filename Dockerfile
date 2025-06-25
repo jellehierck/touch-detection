@@ -28,7 +28,8 @@ USER $USERNAME
 RUN sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
         python3-venv \
-        ros-$ROS_DISTRO-plotjuggler-ros
+        ros-$ROS_DISTRO-plotjuggler-ros \
+        ros-$ROS_DISTRO-rmw-cyclonedds-cpp
 
 # Set the workspace where the touch_detection_robot packages will be stored and built
 ENV TOUCH_DETECTION_WS=/home/$USERNAME/touch_detection_ws
