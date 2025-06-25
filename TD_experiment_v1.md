@@ -49,7 +49,7 @@ These are the conditions tested.
 /home/jelle/thesis/nakama_ws/src/touch-detection/TD_experiment.sh --pc force --start-rep -e 1 -r 1 
 
 # Robot PC
-/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh  --pc force --start-rep -e 1 -r 1 
+/home/fr3/nakama_ws/src/touch-detection/TD_experiment.sh  --pc robot --start-rep -e 1 -r 1 
 ```
 
 Optionally, delete repetition data first on force PC:

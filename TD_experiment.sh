@@ -40,8 +40,8 @@ readonly ROS_DOMAIN_ID_EXPERIMENT=40      # Experiment nodes
 # Time to wait after local sync setup
 readonly DEFAULT_CLOCK_SYNC_SETTLE_TIME_SECONDS=$((5 * 60))
 
-# Robot loops (moving forward and backward) to go through per repetition
-readonly ROBOT_LOOPS=5
+# Robot cycles (moving forward and backward) to go through per repetition
+readonly ROBOT_CYCLES=5
 
 # -----------------------------------------------------
 # Informative print functions
@@ -382,7 +382,7 @@ case "${pc_name}" in
     readonly CLOCK_SYNC_DOCKER_COMPOSE_PATH="${HOME}/clock_sync_ws/src/clock_synchronization/docker-compose.yml"
 
     # Where the docker-compose file for the robot launch file
-    readonly ROBOT_LAUNCH_DOCKER_COMPOSE_PATH="${HOME}/nakama_ws/src/touch_detection_robot/docker-compose.yml"
+    readonly ROBOT_LAUNCH_DOCKER_COMPOSE_PATH="${HOME}/nakama_ws/src/touch-detection/docker-compose.yml"
     ;;
 
 # Vision PC is disabled as TD experiment only needs 2 PCs
@@ -626,10 +626,10 @@ execute_start_rep() {
         # Ensure that Ctrl+C interrupts the repetition
         trap "echo -e '\nInterrupted by user. Exiting.'; exit 0" SIGINT
 
-        loop_nr=1
-        while ((loop_nr <= ROBOT_LOOPS)); do
+        cycle_nr=1
+        while ((cycle_nr <= ROBOT_CYCLES)); do
             # Move robot forward when user presses enter
-            read -r -n 1 -s -p "Press any key to move forward  (${loop_nr}/${ROBOT_LOOPS}) or 'q' to quit: " input
+            read -r -n 1 -s -p "Press any key to move FORWARD  (cycle ${cycle_nr}/${ROBOT_CYCLES}) or 'q' to quit: " input
             echo
             if [[ "$input" == "q" ]]; then
                 kill -s SIGINT $$
@@ -639,16 +639,16 @@ execute_start_rep() {
                 ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [fwd_linear_velocity_controller], deactivate_controllers: [bwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
 
             # Move robot backward when user presses enter
-            read -r -n 1 -s -p "Press any key to move backward (${loop_nr}/${ROBOT_LOOPS}) or 'q' to quit: " input
+            read -r -n 1 -s -p "Press any key to move BACKWARD (cycle ${cycle_nr}/${ROBOT_CYCLES}) or 'q' to quit: " input
             echo
             if [[ "$input" == "q" ]]; then
                 kill -s SIGINT $$
             fi
             docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
                 run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
-                ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [fwd_linear_velocity_controller], deactivate_controllers: [bwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
+                ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [bwd_linear_velocity_controller], deactivate_controllers: [fwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
 
-            ((loop_nr++))
+            ((cycle_nr++))
         done
         ;;
 
