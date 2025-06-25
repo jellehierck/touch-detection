@@ -593,23 +593,6 @@ execute_setup_exp() {
         #     run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --detach clock_sync \
         #     ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
-        # Start clock burst processing nodes
-        echo ""
-        echo "Restarting any previously running clock bounce processing nodes"
-        docker container ls -qa --filter label=process_bounced_clocks | xargs -r docker rm -f
-
-        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-            run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
-            ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
-
-        # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-        #     run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label process_bounced_clocks=true --detach clock_sync \
-        #     ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
-
-        # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
-        #     run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
-        #     ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
-
         # Start force sensor in the foreground
         docker compose -f "${FORCE_SENSOR_DOCKER_COMPOSE_PATH}" \
             run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm ethercat_senseone_container \
@@ -684,10 +667,26 @@ execute_start_rep() {
         if [[ "${demo}" == "false" ]]; then
             # Clean up any previously running nodes
             echo ""
-            echo "Stopping any previously running clock bounce trigger nodes"
+            echo "Stopping any previously running clock bounce processing and trigger nodes"
+            docker container ls -qa --filter label=process_bounced_clocks | xargs -r docker rm -f
             docker container ls -qa --filter label=clock_bounce_trigger | xargs -r docker rm -f
 
-            # Force PC to Robot PC
+            # Start processing nodes
+            docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+                run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
+                ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+
+            # Vision PC is disabled as TD experiment only needs 2 PCs
+            # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+            #     run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label process_bounced_clocks=true --detach clock_sync \
+            #     ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+
+            # Vision PC is disabled as TD experiment only needs 2 PCs
+            # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+            #     run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
+            #     ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+
+            # Start trigger nodes
             docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
                 run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --label clock_bounce_trigger=true --detach clock_sync \
                 ros2 service call /bounce_clocks1/start_bounce std_srvs/srv/Trigger --rate 1.0
