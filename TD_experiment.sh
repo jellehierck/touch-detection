@@ -593,6 +593,23 @@ execute_setup_exp() {
         #     run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --detach clock_sync \
         #     ros2 run clock_sync_cpp bounce_clocks --ros-args -r __name:=bounce_clocks1 -r /bounce_input:=/bounce -r /bounce_output:=/bounce -p nr_bounces:=100
 
+        # Start clock burst processing nodes
+        echo ""
+        echo "Restarting any previously running clock bounce processing nodes"
+        docker container ls -qa --filter label=process_bounced_clocks | xargs -r docker rm -f
+
+        docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+            run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
+            ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+
+        # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+        #     run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_FORCE_TO_VISION}" --label process_bounced_clocks=true --detach clock_sync \
+        #     ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+
+        # docker compose -f "${CLOCK_SYNC_DOCKER_COMPOSE_PATH}" \
+        #     run --volume "${CLOCK_BURST_OUTPUT_FOLDER_PATH}:/output" --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_VISION_TO_ROBOT}" --label process_bounced_clocks=true --detach clock_sync \
+        #     ros2 run clock_sync_py process_bounced_clocks --ros-args -p filepath:=/output/"${EXPERIMENT_NAME}"_bounce.csv -p auto_process_delay_sec:=0.1 -p auto_process_index:=100 -p only_summary:=true
+
         # Start force sensor in the foreground
         docker compose -f "${FORCE_SENSOR_DOCKER_COMPOSE_PATH}" \
             run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm ethercat_senseone_container \
@@ -693,7 +710,7 @@ execute_start_rep() {
 
         # Start rosbag recording in de foreground
         docker compose -f "${BAGFILE_RECORDING_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output touch_detection_recording \
+            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output --rm --remove-orphans touch_detection_recording \
             ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
 
         # Clean up clock bounce trigger nodes and bag recording container
