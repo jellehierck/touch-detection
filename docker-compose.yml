@@ -2,8 +2,8 @@ services:
 
   touch_detection_robot:
     extends:
-      # Change this to the absolute path of the base docker-compose file
-      file: /home/fr3/nakama_docker/franka_ros2_v0.1.15/docker-compose.yml
+      # TODO: Change this to the absolute path of the base docker-compose file
+      file: /home/jelle/thesis/nakama_docker/franka_ros2_v0.1.15/docker-compose.yml
       # Select the right service name
       service: franka_ros2_v0.1.15
 

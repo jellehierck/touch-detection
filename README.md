@@ -1,5 +1,11 @@
 # Touch detection experiment
 
+## Prerequisites
+
+Our custom `franka_ros2_v0.1.15` image (<https://github.com/jellehierck/nakama_docker/tree/main/franka_ros2_v0.1.15>)
+
+- Make sure to change the path in the `touch-detection/docker-compose.yml` file, so that it points to the location of `franka_ros2_v0.1.15/docker-compose.yml`
+
 ## Build
 
 ```bash
@@ -12,13 +18,13 @@ docker compose build
 docker compose run --rm --remove-orphans touch_detection_robot ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=false
 ```
 
-## Activate fwd controller
+## Activate forward controller
 
 ```bash
 docker compose run --rm --remove-orphans touch_detection_robot ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [fwd_linear_velocity_controller], deactivate_controllers: [bwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
 ```
 
-## Activate bwd controller
+## Activate backward controller
 
 ```bash
 docker compose run --rm --remove-orphans touch_detection_robot ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [bwd_linear_velocity_controller], deactivate_controllers: [fwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
@@ -33,15 +39,13 @@ docker compose run --rm --remove-orphans touch_detection_robot ros2 launch touch
 ## Record rosbag
 
 ```bash
-cd /home/fr3/nakama_ws/src/touch_detection_robot/recording
-docker compose run --rm --remove-orphans --volume /home/fr3/nakama_ws/src/touch_detection_robot/output:/output touch_detection_recording ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/test
+docker compose run --rm --remove-orphans --volume /home/fr3/nakama_ws/src/touch_detection_robot/output:/output touch_detection_robot ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/test
 ```
 
 ## Rosbag plotjuggler
 
 ```bash
-cd /home/fr3/nakama_ws/src/touch_detection_robot/recording
-docker compose run --rm --remove-orphans --volume /home/fr3/nakama_ws/src/touch_detection_robot/output:/output touch_detection_recording ros2 run plotjuggler plotjuggler
+docker compose run --rm --remove-orphans --volume /home/fr3/nakama_ws/src/touch_detection_robot/output:/output touch_detection_robot ros2 run plotjuggler plotjuggler
 ```
 
 ## Poses
