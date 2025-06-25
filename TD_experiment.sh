@@ -93,13 +93,6 @@ Execution options (choose one):
                             has an effect on the data collection PC 
                             ('${DATA_COLLECTION_PC}').
 
-    --record-bag            Record rosbag data for a specific repetition.
-                            The recording is started in the foreground and must
-                            be manually stopped with Ctrl+C when finished.
-                            Requires '-e'/'--exp' AND '-r'/'--rep'. This only 
-                            has an effect on the data collection PC 
-                            ('${DATA_COLLECTION_PC}').
-
     --empty-rep             Empty all stored data recorded for a repetition.
                             Requires '-e'/'--exp' AND '-r'/'--rep'. This only 
                             has an effect on the data collection PC 
@@ -382,7 +375,7 @@ case "${pc_name}" in
     readonly CLOCK_SYNC_DOCKER_COMPOSE_PATH="${HOME}/clock_sync_ws/src/clock_synchronization/docker-compose.yml"
 
     # Where the docker-compose file for the robot launch file
-    readonly ROBOT_LAUNCH_DOCKER_COMPOSE_PATH="${HOME}/nakama_ws/src/touch-detection/docker-compose.yml"
+    readonly TOUCH_DETECTION_DOCKER_COMPOSE_PATH="${HOME}/nakama_ws/src/touch-detection/docker-compose.yml"
     ;;
 
 # Vision PC is disabled as TD experiment only needs 2 PCs
@@ -397,7 +390,7 @@ case "${pc_name}" in
 #     readonly CLOCK_BURST_OUTPUT_FOLDER_PATH="${HOME}/git/clock_sync_ws/src/clock_synchronization/output/${EXPERIMENT_NAME}"
 
 #     # Get the folder where bag files should be stored
-#     readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/git/clock_sync_ws/src/touch-detection/recording/output"
+#     readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/git/clock_sync_ws/src/touch-detection/output"
 #     ;;
 
 "${FORCE_PC}")
@@ -414,10 +407,10 @@ case "${pc_name}" in
     readonly FORCE_SENSOR_DOCKER_COMPOSE_PATH="${HOME}/thesis/Simple_Senseone_eth_container/docker-compose.yaml"
 
     # Where the docker-compose file for the bagfile recording is located
-    readonly BAGFILE_RECORDING_DOCKER_COMPOSE_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/recording/docker-compose.yml"
+    readonly TOUCH_DETECTION_DOCKER_COMPOSE_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/docker-compose.yml"
 
     # Get the folder where bag files should be stored
-    readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/recording/output"
+    readonly BAG_FILE_OUTPUT_FOLDER_PATH="${HOME}/thesis/nakama_ws/src/touch-detection/output"
     ;;
 
 "${AI_PC}")
@@ -530,7 +523,7 @@ execute_setup_exp() {
         # Start robot-specific launch file in the foreground
         echo ""
         echo "Starting robot launch"
-        docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
+        docker compose -f "${TOUCH_DETECTION_DOCKER_COMPOSE_PATH}" \
             run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
             ros2 launch touch_detection_bringup bringup.launch.py robot_ip:=172.16.0.2 load_gripper:=false use_rviz:=false use_plotjuggler:=true
 
@@ -634,7 +627,7 @@ execute_start_rep() {
             if [[ "$input" == "q" ]]; then
                 kill -s SIGINT $$
             fi
-            docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
+            docker compose -f "${TOUCH_DETECTION_DOCKER_COMPOSE_PATH}" \
                 run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
                 ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [fwd_linear_velocity_controller], deactivate_controllers: [bwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
 
@@ -644,7 +637,7 @@ execute_start_rep() {
             if [[ "$input" == "q" ]]; then
                 kill -s SIGINT $$
             fi
-            docker compose -f "${ROBOT_LAUNCH_DOCKER_COMPOSE_PATH}" \
+            docker compose -f "${TOUCH_DETECTION_DOCKER_COMPOSE_PATH}" \
                 run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --rm touch_detection_robot \
                 ros2 service call /controller_manager/switch_controller controller_manager_msgs/srv/SwitchController "{activate_controllers: [bwd_linear_velocity_controller], deactivate_controllers: [fwd_linear_velocity_controller], strictness: 1, activate_asap: true, timeout: {sec: 1} }"
 
@@ -708,11 +701,11 @@ execute_start_rep() {
         fi
 
         # Start rosbag recording in de foreground
-        docker compose -f "${BAGFILE_RECORDING_DOCKER_COMPOSE_PATH}" \
-            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output --rm --remove-orphans touch_detection_recording \
+        docker compose -f "${TOUCH_DETECTION_DOCKER_COMPOSE_PATH}" \
+            run --env ROS_DOMAIN_ID="${ROS_DOMAIN_ID_EXPERIMENT}" --volume "${BAG_FILE_OUTPUT_FOLDER_PATH}":/output --rm --remove-orphans touch_detection_robot \
             ros2 bag record /franka_robot_state_broadcaster/robot_state /bota_sensor_node/wrench --output /output/"${EXPERIMENT_NAME}"
 
-        # Clean up clock bounce trigger nodes and bag recording container
+        # Clean up clock bounce trigger nodes
         docker container ls -qa --filter label=clock_bounce_trigger | xargs -r docker rm -f
         ;;
 
